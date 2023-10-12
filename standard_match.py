@@ -31,6 +31,8 @@ def plot_max_utility_graph(males, females, male_preferences, female_preferences,
     plt.show()
     print('_____________________________________________________________________________')
 
+#nx.set_node_attributes(G, bb, "betweenness")
+
 class Male:
     def __init__(self, name, preferences):
         self.name = name
@@ -52,13 +54,17 @@ class Matching:
         self.males = males
         self.females = females
 
+    def generate_preferences(self, n):
+        from random import sample
+        self.males = [Male(i, sample(list(range(1, n+1)), n)) for i in range(1, n+1)]
+        self.females = [Female(i, sample(list(range(1, n+1)), n)) for i in range(1, n+1)]
+
+    def make_graph(self):
         self.graph = nx.Graph()
-        for i, node in enumerate(males):
-            self.graph.add_node(node, pos=(0, len(males) - i))
-        for i, node in enumerate(females):
-            self.graph.add_node(node, pos=(1, len(females) - i))
-
-
+        for i, male in enumerate(self.males):
+            self.graph.add_node("m" + str(i), pos=(0, len(self.males) - i))
+        for i, female in enumerate(self.females):
+            self.graph.add_node("w" + str(i), pos=(1, len(self.females) - i))
 
     def finding_matching_foundamental(self):
         change = True
@@ -67,16 +73,16 @@ class Matching:
             print(f"Round {round}")
             change = False
             # Reset female offers
-            for female in females:
+            for female in self.females:
                 female.matched = None
                 female.offered = []
 
-            for i, male in enumerate(males):
+            for i, male in enumerate(self.males):
                 proposal = male.left[0]
-                females[proposal - 1].offered.append(i + 1)
+                self.females[proposal - 1].offered.append(i + 1)
                 print(f"Male {i + 1} proposed to Female {proposal} ")
 
-            for i, female in enumerate(females):
+            for i, female in enumerate(self.females):
                 for suitor in female.preferences[:]:
                     # accepted top one,
                     if suitor in female.offered:
@@ -84,13 +90,14 @@ class Matching:
                             female.matched = suitor
                             print(f"Female {i + 1} matches with male {suitor} ")
                         else:
-                            males[suitor - 1].left.remove(i + 1)
+                            self.males[suitor - 1].left.remove(i + 1)
                             print(f"Female {i + 1} rejects male {suitor} ")
                             change = True
 
             round += 1
-        #for female in females:
-            #self.graph.add_edge(key, value)
+        for i, female in enumerate(self.females):
+            print("Adding edge from " + "m" + str(female.matched) + " to " + "w" + str(i+1))
+            self.graph.add_edge("m" + str(female.matched), "w" + str(i+1))
 
         return round
 
@@ -108,9 +115,13 @@ class Matching:
 if __name__ == '__main__':
 
 
-    males = [Male("1", [2,3,1]), Male("2", [2,3,1]), Male("3", [3,2,1])]
-    females = [Female("1", [2,3,1]), Female("2", [3,1,2]), Female("3", [1,2,3])]
+    # males = [Male("1", [2,3,1]), Male("2", [2,3,1]), Male("3", [3,2,1])]
+    # females = [Female("1", [2,3,1]), Female("2", [3,1,2]), Female("3", [1,2,3])]
 
+    matching = Matching()
+    matching.generate_preferences(4)
+    matching.make_graph()
+    matching.finding_matching_foundamental()
 
 
 
