@@ -31,8 +31,7 @@ def plot_max_utility_graph(males, females, male_preferences, female_preferences,
     plt.show()
     print('_____________________________________________________________________________')
 
-
-class Male():
+class Male:
     def __init__(self, name, preferences):
         self.name = name
         self.preferences = preferences
@@ -40,12 +39,70 @@ class Male():
         self.matched = None
 
 
-class Female():
+class Female:
     def __init__(self, name, preferences):
         self.name = name
         self.preferences = preferences
         self.offered = []
         self.matched = None
+
+
+class Matching:
+    def __init__(self, males = [], females = []):
+        self.males = males
+        self.females = females
+
+        self.graph = nx.Graph()
+        for i, node in enumerate(males):
+            self.graph.add_node(node, pos=(0, len(males) - i))
+        for i, node in enumerate(females):
+            self.graph.add_node(node, pos=(1, len(females) - i))
+
+
+
+    def finding_matching_foundamental(self):
+        change = True
+        round = 1
+        while change:
+            print(f"Round {round}")
+            change = False
+            # Reset female offers
+            for female in females:
+                female.matched = None
+                female.offered = []
+
+            for i, male in enumerate(males):
+                proposal = male.left[0]
+                females[proposal - 1].offered.append(i + 1)
+                print(f"Male {i + 1} proposed to Female {proposal} ")
+
+            for i, female in enumerate(females):
+                for suitor in female.preferences[:]:
+                    # accepted top one,
+                    if suitor in female.offered:
+                        if female.matched == None:
+                            female.matched = suitor
+                            print(f"Female {i + 1} matches with male {suitor} ")
+                        else:
+                            males[suitor - 1].left.remove(i + 1)
+                            print(f"Female {i + 1} rejects male {suitor} ")
+                            change = True
+
+            round += 1
+        #for female in females:
+            #self.graph.add_edge(key, value)
+
+        return round
+
+    def display_matching(self):
+        return None
+
+    def metrics(self, method="linear"):
+        if method == "linear":
+            return None
+
+
+
 
 
 if __name__ == '__main__':
@@ -55,34 +112,7 @@ if __name__ == '__main__':
     females = [Female("1", [2,3,1]), Female("2", [3,1,2]), Female("3", [1,2,3])]
 
 
-    change = True
-    round = 1
-    while change:
-        print(f"Round {round}")
-        change = False
-        #Reset female offers
-        for female in females:
-            female.matched = None
-            female.offered = []
 
-        for i, male in enumerate(males):
-            proposal = male.left[0]
-            females[proposal-1].offered.append(i+1)
-            print(f"Male {i+1} proposed to Female {proposal} ")
-
-        for i, female in enumerate(females):
-            for suitor in female.preferences[:]:
-                # accepted top one,
-                if suitor in female.offered:
-                    if female.matched == None:
-                        female.matched = suitor
-                        print(f"Female {i+1} matches with male {suitor} ")
-                    else:
-                        males[suitor-1].left.remove(i+1)
-                        print(f"Female {i+1} rejects male {suitor} ")
-                        change = True
-
-        round += 1
 
     #
 
