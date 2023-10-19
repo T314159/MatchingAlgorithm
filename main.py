@@ -44,6 +44,7 @@ def plot_max_utility_graph(males, females, male_preferences, female_preferences,
 
 
 if __name__ == '__main__':
+
     males = ['m1', 'm2', 'm3']
     females = ['w1', 'w2', 'w3']
 

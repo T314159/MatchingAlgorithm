@@ -70,6 +70,33 @@ class Matching:
         for i, female in enumerate(self.females):
             self.graph.add_node("w" + str(i+1), pos=(1, len(self.females) - i))
 
+    def find_all_matchings(self):
+        self.stable_matchings = []
+
+        import itertools
+        for matching in list(itertools.permutations(list(range(0,len(self.males))))):
+            for i in range(len(self.males)):
+                self.males[i].matched   = matching[i]+1
+                self.females[matching[i]].matched = i+1
+
+            good = True
+            i=0
+            while i < len(self.males) and good:
+                for female_index in self.males[i].preferences:
+                    if self.males[i].matched == female_index: break
+                    else:
+                        if self.females[female_index].preferences.index(i+1) < self.females[female_index].preferences.index(self.females[female_index].matched):
+                            good = False
+
+                i+=1
+
+            if good: self.stable_matchings.append(matching)
+            print(self.stable_matchings)
+            # need to add metrics in here too
+
+
+
+
     def finding_matching_foundamental(self):
         change = True
         round = 1
@@ -131,16 +158,22 @@ if __name__ == '__main__':
 
     # males = [Male("1", [2,3,1]), Male("2", [2,3,1]), Male("3", [3,2,1])]
     # females = [Female("1", [2,3,1]), Female("2", [3,1,2]), Female("3", [1,2,3])]
-    for n in range(2, 51):
-        iterations = 1000
+    ns = []
+    male_avgs = []
+    female_avgs = []
+    for n in range(4, 5):
+        iterations = 1
+
         males_outcomes = []
         females_outcomes = []
 
         for i in range(iterations):
+            print(i)
             matching = Matching()
             matching.generate_preferences(n)
             matching.make_graph()
             matching.finding_matching_foundamental()
+            matching.find_all_matchings()
             metrics = matching.metrics()
             males_outcomes.append(metrics["males_avg"])
             females_outcomes.append( metrics["females_avg"])
@@ -148,11 +181,17 @@ if __name__ == '__main__':
         print(f"\n\nn={n}")
         print("  Males avg:", round(np.mean(males_outcomes),3), "Std: ", round(np.std(males_outcomes),3))
         print("Females avg:", round(np.mean(females_outcomes),3), "Std: ", round(np.std(females_outcomes),3))
-
+        ns.append(n)
+        male_avgs.append(np.mean(males_outcomes))
+        female_avgs.append(np.mean(females_outcomes))
         #print("\n", stats.ttest_ind(males_outcomes, females_outcomes, equal_var = False))
 
 
 
+
+print(ns)
+print(male_avgs)
+print(female_avgs)
 # Does the algorithm work for weighed, non ranked - I think the answer is yes.
 # Yeah definitely yes - just maybe more difference between stable and optimal.
 # Is there any difference in this for regular too tho - difference in stable versus optimal
