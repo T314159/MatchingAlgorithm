@@ -2,6 +2,7 @@ import networkx as nx
 
 import numpy as np
 import scipy.stats as stats
+from scipy.optimize import linear_sum_assignment
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -72,6 +73,7 @@ class Matching:
 
     def find_all_matchings(self):
         self.stable_matchings = []
+        overall_outcomes = []
 
         import itertools
         for matching in list(itertools.permutations(list(range(0,len(self.males))))):
@@ -85,17 +87,21 @@ class Matching:
                 for female_index in self.males[i].preferences:
                     if self.males[i].matched == female_index: break
                     else:
-                        if self.females[female_index].preferences.index(i+1) < self.females[female_index].preferences.index(self.females[female_index].matched):
+                        if self.females[female_index-1].preferences.index(i+1) < self.females[female_index-1].preferences.index(self.females[female_index-1].matched):
                             good = False
 
                 i+=1
 
-            if good: self.stable_matchings.append(matching)
-            print(self.stable_matchings)
+            if good:
+                self.stable_matchings.append(matching)
+                metric = self.metrics()
+                overall_outcomes.append((metric["males_avg"]+metric["females_avg"])/2)
+
+        if debug == 1: print("All matchings: ", self.stable_matchings)
             # need to add metrics in here too
-
-
-
+        return ({"best_outcome": min(overall_outcomes), "num_outcome": len(overall_outcomes),
+                 "overall_avg": sum(overall_outcomes) / len(overall_outcomes)
+                 })
 
     def finding_matching_foundamental(self):
         change = True
@@ -132,6 +138,36 @@ class Matching:
 
         return round
 
+    def finding_matching_foundamental(self):
+
+        # Convert to the right matrix form
+        matrix_list = [[]]
+        for i, male in self.males:
+            row = []
+            for j, female in range(len(self.females)):
+                male_pref = male.preferences.index(j+1)
+                female_pref = female.preferences.index(i+1)
+                row.append(male_pref+female_pref)
+            matrix_list.append(row)
+
+        matrix = np.array(matrix_list)
+        if debug == 1: print(matrix)
+
+        # Run hungarian algorithm
+        row_ind, col_ind = linear_sum_assignment(matrix)
+
+        # Adding matches
+        for i in range (row_ind):
+            self.males[i].matched = row_ind[i]
+        for i in range(col_ind):
+            self.females[i].matched = col_ind[i]
+
+        # Add edges to our graph structure
+        for i, female in enumerate(self.females):
+            if debug == 1: print("Adding edge from " + "m" + str(female.matched) + " to " + "w" + str(i+1))
+            self.graph.add_edge("m" + str(female.matched), "w" + str(i+1))
+
+
     def display_matching(self):
         nx.draw(self.graph, pos=nx.get_node_attributes(self.graph, 'pos'), with_labels=True)
         plt.show()
@@ -155,43 +191,74 @@ class Matching:
 
 if __name__ == '__main__':
 
-
     # males = [Male("1", [2,3,1]), Male("2", [2,3,1]), Male("3", [3,2,1])]
     # females = [Female("1", [2,3,1]), Female("2", [3,1,2]), Female("3", [1,2,3])]
-    ns = []
-    male_avgs = []
-    female_avgs = []
-    for n in range(4, 5):
-        iterations = 1
+    test = "brute_force"
 
-        males_outcomes = []
-        females_outcomes = []
+    if test == "foundamental":
+        ns = []
+        male_avgs = []
+        female_avgs = []
+        for n in range(2, 50):
+            iterations = 1000
 
-        for i in range(iterations):
-            print(i)
-            matching = Matching()
-            matching.generate_preferences(n)
-            matching.make_graph()
-            matching.finding_matching_foundamental()
-            matching.find_all_matchings()
-            metrics = matching.metrics()
-            males_outcomes.append(metrics["males_avg"])
-            females_outcomes.append( metrics["females_avg"])
+            males_outcomes = []
+            females_outcomes = []
 
-        print(f"\n\nn={n}")
-        print("  Males avg:", round(np.mean(males_outcomes),3), "Std: ", round(np.std(males_outcomes),3))
-        print("Females avg:", round(np.mean(females_outcomes),3), "Std: ", round(np.std(females_outcomes),3))
-        ns.append(n)
-        male_avgs.append(np.mean(males_outcomes))
-        female_avgs.append(np.mean(females_outcomes))
-        #print("\n", stats.ttest_ind(males_outcomes, females_outcomes, equal_var = False))
+            for i in range(iterations):
+                print(i)
+                matching = Matching()
+                matching.generate_preferences(n)
+                matching.make_graph()
+                matching.finding_matching_foundamental()
+                metrics = matching.metrics()
+                males_outcomes.append(metrics["males_avg"])
+                females_outcomes.append( metrics["females_avg"])
+
+            print(f"\n\nn={n}")
+            # print("  Males avg:", round(np.mean(males_outcomes),3), "Std: ", round(np.std(males_outcomes),3))
+            # print("Females avg:", round(np.mean(females_outcomes),3), "Std: ", round(np.std(females_outcomes),3))
+
+            ns.append(n)
+            male_avgs.append(np.mean(males_outcomes))
+            female_avgs.append(np.mean(females_outcomes))
+            #print("\n", stats.ttest_ind(males_outcomes, females_outcomes, equal_var = False))
+
+    elif test == "brute_force":
+        ns = []
+        overall_avgs = []
+        best_overalls = []
+        for n in range(9, 10):
+            print(f"\n\nn={n}")
+            iterations = 500
+
+            overall_avg_outcomes = []
+            best_overall_outcomes = []
+
+
+            for i in range(iterations):
+                if i % 10 == 0: print(i)
+                matching = Matching()
+                matching.generate_preferences(n)
+                matching.make_graph()
+                metrics = matching.find_all_matchings()
+                overall_avg_outcomes.append(metrics["overall_avg"])
+                best_overall_outcomes.append(metrics["best_outcome"])
+
+            # print("  Males avg:", round(np.mean(males_outcomes),3), "Std: ", round(np.std(males_outcomes),3))
+            # print("Females avg:", round(np.mean(females_outcomes),3), "Std: ", round(np.std(females_outcomes),3))
+
+            ns.append(n)
+            overall_avgs.append(np.mean(overall_avg_outcomes))
+            best_overalls.append(np.mean(best_overall_outcomes))
+            # print("\n", stats.ttest_ind(males_outcomes, females_outcomes, equal_var = False))
 
 
 
 
 print(ns)
-print(male_avgs)
-print(female_avgs)
+print("Average stable matching outcome:", overall_avgs)
+print("Best stable matching:", best_overalls)
 # Does the algorithm work for weighed, non ranked - I think the answer is yes.
 # Yeah definitely yes - just maybe more difference between stable and optimal.
 # Is there any difference in this for regular too tho - difference in stable versus optimal
