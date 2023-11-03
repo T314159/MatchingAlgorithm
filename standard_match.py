@@ -138,16 +138,16 @@ class Matching:
 
         return round
 
-    def finding_matching_foundamental(self):
+    def finding_matching_hungarian(self):
 
         # Convert to the right matrix form
-        matrix_list = [[]]
-        for i, male in self.males:
+        matrix_list = []
+        for i, male in enumerate(self.males):
             row = []
-            for j, female in range(len(self.females)):
+            for j, female in enumerate(self.females):
                 male_pref = male.preferences.index(j+1)
                 female_pref = female.preferences.index(i+1)
-                row.append(male_pref+female_pref)
+                row.append(2*male_pref+female_pref)
             matrix_list.append(row)
 
         matrix = np.array(matrix_list)
@@ -155,12 +155,11 @@ class Matching:
 
         # Run hungarian algorithm
         row_ind, col_ind = linear_sum_assignment(matrix)
-
+        if debug == 1: print(row_ind, col_ind)
         # Adding matches
-        for i in range (row_ind):
-            self.males[i].matched = row_ind[i]
-        for i in range(col_ind):
-            self.females[i].matched = col_ind[i]
+        for male, female in enumerate(col_ind):
+            self.males[i].matched = female+1
+            self.females[female].matched = male+1
 
         # Add edges to our graph structure
         for i, female in enumerate(self.females):
@@ -193,7 +192,7 @@ if __name__ == '__main__':
 
     # males = [Male("1", [2,3,1]), Male("2", [2,3,1]), Male("3", [3,2,1])]
     # females = [Female("1", [2,3,1]), Female("2", [3,1,2]), Female("3", [1,2,3])]
-    test = "brute_force"
+    test = "hungarian"
 
     if test == "foundamental":
         ns = []
@@ -224,6 +223,38 @@ if __name__ == '__main__':
             female_avgs.append(np.mean(females_outcomes))
             #print("\n", stats.ttest_ind(males_outcomes, females_outcomes, equal_var = False))
 
+    elif test == "hungarian":
+        ns = []
+        male_avgs = []
+        female_avgs = []
+        for n in range(250, 251, 25):
+            iterations = 500
+
+            males_outcomes = []
+            females_outcomes = []
+
+            for i in range(iterations):
+                matching = Matching()
+                matching.generate_preferences(n)
+                matching.make_graph()
+                matching.finding_matching_hungarian()
+                metrics = matching.metrics()
+                males_outcomes.append(metrics["males_avg"])
+                females_outcomes.append( metrics["females_avg"])
+
+            print(f"\n\nn={n}")
+            print("  Males avg:", round(np.mean(males_outcomes),3), "Std: ", round(np.std(males_outcomes),3))
+            print("Females avg:", round(np.mean(females_outcomes),3), "Std: ", round(np.std(females_outcomes),3))
+
+            ns.append(n)
+            male_avgs.append(np.mean(males_outcomes))
+            female_avgs.append(np.mean(females_outcomes))
+            print("\n", stats.ttest_ind(males_outcomes, females_outcomes, equal_var = False))
+
+        print(ns)
+        print("Average male matching outcome:", male_avgs)
+        print("Average female matching outcome:", female_avgs)
+
     elif test == "brute_force":
         ns = []
         overall_avgs = []
@@ -253,12 +284,12 @@ if __name__ == '__main__':
             best_overalls.append(np.mean(best_overall_outcomes))
             # print("\n", stats.ttest_ind(males_outcomes, females_outcomes, equal_var = False))
 
+        print(ns)
+        print("Average stable matching outcome:", overall_avgs)
+        print("Best stable matching:", best_overalls)
 
 
 
-print(ns)
-print("Average stable matching outcome:", overall_avgs)
-print("Best stable matching:", best_overalls)
 # Does the algorithm work for weighed, non ranked - I think the answer is yes.
 # Yeah definitely yes - just maybe more difference between stable and optimal.
 # Is there any difference in this for regular too tho - difference in stable versus optimal
